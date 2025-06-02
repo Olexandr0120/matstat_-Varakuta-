@@ -1,0 +1,191 @@
+---
+title: "Звіт до лабораторної роботи №3"
+author: "Варакута Олександр КІ-24-1"
+date: "`r Sys.Date()`"
+output:
+
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(moments)
+library(kableExtra)
+library(beeswarm)
+library(magrittr)
+```
+
+# Постановка завдання
+
+**Тема**: Основи вибіркового методу  
+**Мета**: Засвоїти статистичне оцінювання характеристик логнормального розподілу за допомогою R та порівняти теоретичні і вибіркові характеристики.  
+**Завдання**:  
+- Згенерувати вибірки обсягів $n=100$ та $n=10000$ для $X \sim \text{LogNormal}(\mu=0, \sigma=0.25)$.  
+- Розрахувати теоретичні характеристики, вибіркові оцінки та побудувати візуалізації (гістограми, boxplot-и, емпіричні ФР).  
+- Порівняти результати у зведеній таблиці.
+
+---
+
+# Теоретичні характеристики
+
+```{r}
+mu <- 0
+sigma <- 0.25
+
+theoretical_mean <- exp(mu + sigma^2 / 2)
+theoretical_median <- exp(mu)
+theoretical_var <- (exp(sigma^2) - 1) * exp(2*mu + sigma^2)
+theoretical_sd <- sqrt(theoretical_var)
+theoretical_cv <- sqrt(exp(sigma^2) - 1)
+theoretical_skew <- (exp(sigma^2) + 2) * sqrt(exp(sigma^2) - 1)
+theoretical_kurt <- exp(4*sigma^2) + 2*exp(3*sigma^2) + 3*exp(2*sigma^2) - 6
+
+theoretical_mu3 <- (exp(sigma^2)-1)*(exp(3*sigma^2)+3*exp(2*sigma^2)+1)*exp(3*mu+1.5*sigma^2)
+theoretical_mu4 <- exp(4*mu+8*sigma^2) - 4*exp(3*mu+4.5*sigma^2)*theoretical_mean +
+  6*exp(2*mu+2*sigma^2)*theoretical_mean^2 - 3*theoretical_mean^4
+
+theoretical_data <- data.frame(
+  Характеристика = c("Середнє", "Медіана", "Дисперсія", "СКВ", "Коеф. варіації", 
+                     "Асиметрія", "Ексцес", "Центр. момент 3-го порядку", "Центр. момент 4-го порядку"),
+  Значення = round(c(theoretical_mean, theoretical_median, theoretical_var, theoretical_sd,
+                      theoretical_cv, theoretical_skew, theoretical_kurt, theoretical_mu3, theoretical_mu4), 5)
+)
+
+kable(theoretical_data, caption = "Теоретичні характеристики логнормального розподілу") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+---
+
+# Генерація вибірок та візуалізація
+
+```{r}
+set.seed(123)
+n1 <- 100
+n2 <- 10000
+X1 <- rlnorm(n1, meanlog=mu, sdlog=sigma)
+X2 <- rlnorm(n2, meanlog=mu, sdlog=sigma)
+
+# Виведемо кілька перших значень вибірок
+head(X1)
+summary(X2)
+
+# Гістограми
+par(mfrow=c(1,2))
+hist(X1, probability=TRUE, col="lightblue", main="Гістограма n=100", xlab="X1")
+curve(dlnorm(x, meanlog=mu, sdlog=sigma), add=TRUE, col="red", lwd=2)
+
+hist(X2, probability=TRUE, col="lightgreen", main="Гістограма n=10000", xlab="X2")
+curve(dlnorm(x, meanlog=mu, sdlog=sigma), add=TRUE, col="red", lwd=2)
+```
+
+---
+
+# Функція для обчислення вибіркових характеристик та візуалізація
+
+```{r}
+calc_stats <- function(x) { 
+  m <- mean(x)
+  v <- var(x)
+  v_adj <- v * length(x) / (length(x)-1)
+  sd <- sqrt(v)
+  sd_adj <- sqrt(v_adj)
+  mu3 <- mean((x - m)^3)
+  mu4 <- mean((x - m)^4)
+  skew <- skewness(x)
+  kurt <- kurtosis(x)
+  c(Середнє = m, Медіана=median(x), Дисперсія=v, Виправлена_дисперсія=v_adj,
+    СКВ=sd, Виправлене_СКВ=sd_adj, Центральний_момент3=mu3,
+    Центральний_момент4=mu4, Асиметрія=skew, Ексцес=kurt)
+}
+
+# Розрахунок вибіркових характеристик
+emp1 <- calc_stats(X1)
+
+empirical_data <- data.frame(
+  Характеристика = names(emp1),
+  Значення = round(emp1, 5)
+)
+
+kable(empirical_data, caption = "Вибіркові характеристики (n=100)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+---
+
+# Емпіричні функції розподілу та Boxplot
+
+```{r}
+# Емпіричні ФР
+plot(ecdf(X1), main="Емпірична ФР (n=100)", col="blue", xlab="x", ylab="Fn(x)")
+curve(plnorm(x, meanlog=mu, sdlog=sigma), add=TRUE, col="red", lty=2)
+
+plot(ecdf(X2), main="Емпірична ФР (n=10000)", col="blue", xlab="x", ylab="Fn(x)")
+curve(plnorm(x, meanlog=mu, sdlog=sigma), add=TRUE, col="red", lty=2)
+
+# Boxplot окремо
+boxplot(X1, main="Boxplot n=100", col="orange", horizontal=TRUE)
+beeswarm(X1, add=TRUE, col=2, horizontal=TRUE)
+
+boxplot(X2, main="Boxplot n=10000", col="lightgreen", horizontal=TRUE)
+beeswarm(X2, add=TRUE, col=3, horizontal=TRUE)
+```
+
+---
+
+# Порівняльна таблиця теоретичних та вибіркових характеристик
+
+```{r}
+emp2 <- calc_stats(X2)
+
+table_data <- data.frame(
+  "Назва характеристики" = c("Середнє", "Медіана", "Дисперсія", "Виправлена дисперсія", 
+                             "СКВ", "Виправлене СКВ", "Центральний момент 3-го порядку",
+                             "Центральний момент 4-го порядку", "Асиметрія", "Ексцес"),
+  "Теоретичне значення" = round(c(theoretical_mean, theoretical_median, theoretical_var, theoretical_var,
+                                   theoretical_sd, theoretical_sd, theoretical_mu3, theoretical_mu4,
+                                   theoretical_skew, theoretical_kurt), 4),
+  "Вибіркове значення, n=100" = round(emp1, 4),
+  "Вибіркове значення, n=10000" = round(emp2, 4)
+)
+
+kable(table_data, caption = "Порівняльна таблиця теоретичних та вибіркових характеристик") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+---
+
+# Висновки
+
+- Теоретичні та вибіркові характеристики добре узгоджуються, особливо при $n=10000$.  
+- Логнормальний розподіл має асиметрію та ексцес, що підтверджується результатами.  
+
+# Відповіді на контрольні питання
+
+1️⃣ **Що таке вибірка?**  
+Вибірка — це підмножина генеральної сукупності для дослідження, яка повинна репрезентувати властивості всієї сукупності.
+
+2️⃣ **Як оцінити вибіркове математичне сподівання?**  
+Як середнє арифметичне:  
+$$
+\bar{X} = \frac{1}{n} \sum_{i=1}^{n} x_i
+$$
+
+3️⃣ **Які існують міри розсіювання?**  
+Дисперсія, СКВ, міжквартильний розмах, коефіцієнт варіації.
+
+4️⃣ **Які міри форми розподілу?**  
+Асиметрія (зміщення) та ексцес (гостроверхість), що розраховуються через центральні моменти (3-го та 4-го порядків) або функції `skewness()` та `kurtosis()` у R.
+
+---
+
+# Список використаних джерел
+
+- Документація R (`help(rlnorm)`, `help(skewness)`)  
+- Теоретичні основи логнормального розподілу
+```
+
+---
