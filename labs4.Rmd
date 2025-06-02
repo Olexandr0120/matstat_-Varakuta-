@@ -1,0 +1,250 @@
+---
+title: "Лабораторна робота №4"
+author: "Варакута Олександр КІ-24-1"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+  html_notebook: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", fig.show = "hold")
+library(moments)
+library(kableExtra)
+library(beeswarm)
+library(nortest)
+library(magrittr)
+```
+
+---
+
+# 1 Постановка завдання
+
+Перевірити гіпотезу про нормальність розподілу вибірок $n=50$ та $n=1000$, обчислити числові характеристики (у тому числі стандартизовані значення асиметрії та ексцесу), побудувати графіки та створити власну функцію для форматованого виводу результатів.
+
+---
+
+# 2 Теоретичні відомості
+
+**Нормальний розподіл:**
+
+$$
+f(x)=\frac{1}{\sqrt{2\pi\sigma^2}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}
+$$
+
+де $\mu=0$, $\sigma=1$.
+
+---
+
+# 3 Розв’язання завдання
+
+## 3.1 Генерація вибірок
+
+```{r}
+set.seed(123)
+n1 <- 50
+n2 <- 1000
+X1 <- rnorm(n1, mean=0, sd=1)
+X2 <- rnorm(n2, mean=0, sd=1)
+```
+
+---
+
+## 3.2 Функція для обчислення характеристик
+
+```{r}
+calc_stats <- function(x) {
+  n <- length(x)
+  m <- mean(x)
+  v <- var(x)
+  s <- sd(x)
+  skew <- skewness(x)
+  kurt <- kurtosis(x)
+  z_skew <- skew / sqrt(6/n)
+  z_kurt <- kurt / sqrt(24/n)
+  
+  c(Середнє=m, Дисперсія=v, СКВ=s,
+    Асиметрія=skew, Ексцес=kurt,
+    Z_асиметрія=z_skew, Z_ексцес=z_kurt)
+}
+
+emp1 <- calc_stats(X1)
+emp2 <- calc_stats(X2)
+```
+
+---
+
+## 3.2 Таблиця характеристик
+
+```{r}
+kable(data.frame(
+  Характеристика=names(emp1),
+  Вибірка_50=round(emp1,4),
+  Вибірка_1000=round(emp2,4)
+), caption="Числові характеристики вибірок") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+---
+
+## 3.3 Гістограми
+
+```{r}
+hist(X1, probability=TRUE, col="lightblue", main="Гістограма n=50", xlab="x")
+curve(dnorm(x,0,1), add=TRUE, col="red", lwd=2)
+
+hist(X2, probability=TRUE, col="lightgreen", main="Гістограма n=1000", xlab="x")
+curve(dnorm(x,0,1), add=TRUE, col="red", lwd=2)
+```
+
+---
+
+## 3.4 Boxplot
+
+```{r}
+boxplot(X1, main="Boxplot n=50", col="orange", horizontal=TRUE)
+beeswarm(X1, add=TRUE, col=2, horizontal=TRUE)
+
+boxplot(X2, main="Boxplot n=1000", col="lightgreen", horizontal=TRUE)
+beeswarm(X2, add=TRUE, col=3, horizontal=TRUE)
+```
+
+---
+
+## 3.5 Q-Q Plot
+
+```{r}
+qqnorm(X1, main="Q-Q Plot n=50")
+qqline(X1, col="red")
+
+qqnorm(X2, main="Q-Q Plot n=1000")
+qqline(X2, col="red")
+```
+
+---
+
+## 3.6 Перевірка нормальності
+
+```{r}
+check_normality <- function(x, alpha=0.05) {
+  shapiro <- shapiro.test(x)
+  ks <- ks.test(x, "pnorm", mean=mean(x), sd=sd(x))
+  ad <- ad.test(x)
+  
+  verdict <- function(pval) {
+    if (pval > alpha) "Нормальний" else "Ненормальний"
+  }
+  
+  data.frame(
+    Критерій = c("Shapiro-Wilk", "Kolmogorov-Smirnov", "Anderson-Darling"),
+    p_значення = round(c(shapiro$p.value, ks$p.value, ad$p.value), 5),
+    Результат = c(verdict(shapiro$p.value), verdict(ks$p.value), verdict(ad$p.value))
+  )
+}
+
+check_normality(X1) %>%
+  kable(caption = "Результати перевірки нормальності (n=50)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+check_normality(X2) %>%
+  kable(caption = "Результати перевірки нормальності (n=1000)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+---
+
+# 4 Виконання самостійного завдання
+
+## 4.1 Функція для форматованого виводу та візуалізації
+
+```{r}
+print_stats <- function(x) {
+  n <- length(x)
+  m <- mean(x)
+  v <- var(x)
+  s <- sd(x)
+  skew <- skewness(x)
+  kurt <- kurtosis(x)
+  z_skew <- skew / sqrt(6/n)
+  z_kurt <- kurt / sqrt(24/n)
+  
+  cat("----- Вибірка (n =", n, ") -----\n")
+  cat("Середнє:", round(m, 4), "\n")
+  cat("Дисперсія:", round(v, 4), "\n")
+  cat("СКВ:", round(s, 4), "\n")
+  cat("Асиметрія:", round(skew, 4), "\n")
+  cat("Ексцес:", round(kurt, 4), "\n")
+  cat("Z-Асиметрія:", round(z_skew, 4), "\n")
+  cat("Z-Ексцес:", round(z_kurt, 4), "\n\n")
+  
+  barplot(c(Середнє=m, СКВ=s, Асиметрія=skew, Ексцес=kurt),
+          main=paste("Візуалізація (n=", n, ")", sep=""),
+          col="skyblue", border="white")
+}
+
+print_stats(X1)
+print_stats(X2)
+```
+
+---
+
+# 5  Висновки
+
+- Для великої вибірки $n=1000$ результати дуже близькі до теоретичних характеристик.
+- Для $n=50$ можливі відхилення через малий обсяг даних.
+- Z-значення асиметрії та ексцесу входять у інтервал [-2,2], що підтверджує нормальність.
+
+---
+
+# 6 Відповіді на контрольні питання
+
+**1 Які основні етапи перевірки статистичних гіпотез щодо закону розподілу і чому це важливо для статистичного аналізу?**
+
+Основні етапи:
+- Формулювання нульової (H₀) та альтернативної (H₁) гіпотез.
+- Вибір відповідного статистичного тесту.
+- Обчислення тестової статистики та p-значення.
+- Прийняття або відхилення H₀.
+- Інтерпретація результату.
+
+Це важливо, бо правильність тесту залежить від закону розподілу, що впливає на обґрунтованість статистичних висновків.
+
+---
+
+**2 Як використовувати R для визначення нормальності розподілу даних? Які функції або тести можна використовувати для цього?**
+
+У R для перевірки нормальності:
+- Тести: `shapiro.test()`, `ks.test()`, `nortest::ad.test()`.
+- Показники форми: `moments::skewness()`, `moments::kurtosis()`.
+- Графіки: гістограми з теоретичною кривою, Q-Q plot (`qqnorm()`, `qqline()`).
+
+---
+
+**3 Як використовувати графічні методи, такі як QQ-графік, для оцінювання нормальності розподілу даних у R?**
+
+Q-Q plot порівнює вибіркові та теоретичні квантілі:
+```r
+qqnorm(x)
+qqline(x, col="red")
+```
+Прямолінійність точок = підтвердження нормальності.
+
+---
+
+**️4 Які можливі наслідки або дії, якщо дані не відповідають припущенню про нормальний розподіл?**
+
+- Можливі хибні результати в методах, що передбачають нормальність.
+- Альтернатива: непараметричні тести (Медійний тест, тест Манна-Уїтні) або трансформація даних (логарифмічна, Box-Cox).
+
+---
+
+# 7 Перелік використаних джерел
+
+- Документація R (`help(rnorm)`, `help(skewness)`, `help(shapiro.test)`)  
+- Методичні рекомендації  
+- Пакети `nortest`, `moments`  
+
+---
