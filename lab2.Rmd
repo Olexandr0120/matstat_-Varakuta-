@@ -1,0 +1,172 @@
+---
+title: "Звіт до лабораторної роботи №2"
+author: "Варакута Олександр КІ-24-1"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# Тема
+
+**Створення проєкту зі статистичної обробки даних у стилі literate programming. Налаштування R+RStudio+Quarto середовища**
+
+# Мета
+
+Швидкий старт для роботи у середовищі RStudio із застосуванням концепції «грамотного програмування» засобами мови R, пакету RMarkdown та LaTeX.
+
+# 1. Постановка завдання
+
+1. Створити електронний документ RMarkdown.
+2. Побудувати графік функції:
+<button onclick="toggleFormula('formula1')">Перемкнути формулу/код</button>
+
+<div id="formula1-formula">
+$$
+y(x) = b_0 + b_1x + b_2x^2
+$$
+</div>
+
+<div id="formula1-code" style="display:none;">
+<pre><code>
+y(x) = b_0 + b_1x + b_2x^2
+</code></pre>
+</div>
+
+3. Виконати експорт та імпорт даних.
+4. Створити таблицю й інтерактивний звіт.
+5. Додати перемикач для відображення формул/коду LaTeX.
+6. Надати відповіді на контрольні запитання.
+
+# 2. Хід роботи
+
+## 2.1 Налаштування YAML-заголовку
+
+```yaml
+---
+title: "Лабораторна робота №2"
+author: "Варакута Олександр"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+```
+
+## 2.2 Код на R для побудови графіка
+
+```{r графік, echo=TRUE, message=FALSE}
+# Задаємо параметри
+b0 <- 2
+b1 <- 3
+b2 <- 1.57
+x <- seq(-1, 1, 0.1)
+y <- b0 + b1 * x + b2 * x^2
+
+# Побудова графіка
+plot(x, y, type = "l", col = "red", main = "Графік функції",
+     xlab = "x", ylab = "y")
+points(x, y, col = "blue")
+```
+
+## 2.3 Створення таблиці даних
+
+```{r таблиця, echo=TRUE}
+# Формуємо таблицю даних
+df <- data.frame(x = x, y = y)
+
+# Виводимо таблицю засобами knitr
+knitr::kable(head(df), caption = "Фрагмент таблиці даних")
+```
+
+## 2.4 Експорт та імпорт даних
+
+```{r export-import, echo=TRUE}
+library(rio)
+# Експорт у файл
+export(df, "data/data.csv")
+
+# Імпорт з файлу
+df_new <- import("data/data.csv")
+
+# Візуалізація за допомогою DT
+DT::datatable(df_new)
+```
+
+# 3. Висновки
+
+Створено RMarkdown-документ з інтерактивним меню.  
+Побудовано графік функції.  
+Виконано експорт та імпорт даних у CSV-файл.  
+Створено інтерактивну таблицю.  
+Додано перемикач між відображенням LaTeX-формул і їх кодом.  
+Отримано звіт у HTML-форматі.
+
+# 4. Контрольні запитання
+
+**1. Напишіть код на LaTeX для формули щільності нормального розподілу.**
+
+<button onclick="toggleFormula('formula2')">Перемкнути формулу/код</button>
+
+<div id="formula2-formula">
+$$
+f(x) = \frac{1}{\sigma \sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}
+$$
+</div>
+
+<div id="formula2-code" style="display:none;">
+<pre><code>
+f(x) = \frac{1}{\sigma \sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}
+</code></pre>
+</div>
+
+**2. Як вбудувати таблиці та графіки в RMarkdown?**  
+- Графіки та таблиці вбудовуються за допомогою *чанків* коду (```{r} ... ```).
+- Для таблиць використовують `knitr::kable()`, `DT::datatable()`, `xtable` тощо.
+
+**3. Як розв’язати завдання зі вставленням і форматуванням зображень в RMarkdown?**  
+- Вставляють зображення через `![Alt текст](шлях/до/файлу)` або кодом R через `knitr::include_graphics()`.
+
+**4. Яку функцію виконує YAML-заголовок у динамічному документі?**
+
+YAML-заголовок у динамічному документі виконує функцію **метаданих**, які визначають параметри та поведінку документа при його обробці.
+
+Основні функції YAML-заголовка:
+
+- **Описує властивості документа**, такі як:
+  - `title` — заголовок документа;
+  - `author` — автор;
+  - `date` — дата створення.
+- **Визначає формат виводу**, наприклад:
+  - `html_document`
+  - `pdf_document`
+  - `word_document`
+- **Задає параметри форматування**, як-от:
+  - шрифт;
+  - тема оформлення;
+  - відступи тощо.
+- **Керує динамічними елементами**, такими як:
+  - автоматичне створення змісту;
+  - нумерація розділів;
+  - включення або виключення коду.
+
+# 5. Посилання на репозиторій
+https://github.com/Olexandr0120/matstat_-Varakuta-.git
+
+
+<script>
+function toggleFormula(id) {
+  var formula = document.getElementById(id + "-formula");
+  var code = document.getElementById(id + "-code");
+  if (formula.style.display === "none") {
+    formula.style.display = "block";
+    code.style.display = "none";
+  } else {
+    formula.style.display = "none";
+    code.style.display = "block";
+  }
+}
+</script>
+---
