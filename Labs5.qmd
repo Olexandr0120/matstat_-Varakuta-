@@ -1,0 +1,172 @@
+---
+title: "_Лабораторна робота №5. Варіант №5_"
+author: "Варакута Олександр КІ-24-1"
+date: "`r Sys.Date()`"
+lang: ukr
+format:
+  html:
+    toc: true
+    toc_float:
+      collapsed: true
+      number_sections: true
+    code-fold: show
+editor: visual
+---
+
+# Тема: Випадок з двома вибірками. Побудова регресійних моделей
+
+**Мета:**  
+Дослідження вибіркових даних (X та Y), оцінка кореляції, побудова регресійної моделі, перевірка її адекватності та аналіз залишків.
+
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(readxl)
+library(tidyverse)
+library(ggpubr)
+library(viridis)
+library(kableExtra)
+```
+## 1. Імпорт та підготовка даних
+
+Спочатку задаємо шлях до файлу, перевіряємо, чи існує файл, імпортуємо дані та обираємо потрібні стовпці X та Y для аналізу.
+
+```{r}
+file <- "C:/Users/Froshy/Documents/Лабораторні ІСМТІ КІ-24-1/matstat_-Varakuta-/data/Варианты1-17 (1) (1).xls"
+file.exists(file)
+
+data <- read_excel(file, sheet = 1)
+names(data)
+
+data_5 <- data |> select(X = Col_6, Y = Col_31)
+
+# Виводимо перші 100 рядків таблиці для загального ознайомлення
+head(data_5, 100) |> 
+  kbl(caption = "100 рядків даних") |> 
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+```
+
+---
+
+## 2. Графічне дослідження
+
+Побудуємо графік розсіяння (scatter plot) для наочного візуального дослідження залежності між X та Y.
+
+```{r}
+ggplot(data_5, aes(x = X, y = Y)) +
+  geom_point(aes(color = Y), size = 2, alpha = 0.8) +
+  scale_color_viridis_c() +
+  labs(title = "Графік розсіяння: Y ~ X",
+       subtitle = "Кольори показують значення Y",
+       x = "X (Col_6)", y = "Y (Col_31)",
+       caption = "Візуалізація допомагає побачити загальний зв’язок між змінними") +
+  theme_minimal(base_size = 14)
+```
+
+---
+
+## 3. Кореляційний аналіз
+
+Обчислюємо коефіцієнт кореляції Пірсона для визначення сили та напрямку зв’язку між X та Y.
+
+```{r}
+cor_test <- cor.test(data_5$X, data_5$Y)
+cor_test
+```
+
+---
+
+## 4. Побудова лінійної регресії
+
+Будуємо модель лінійної регресії (Y залежить від X) і переглядаємо статистичні характеристики моделі.
+
+```{r}
+model <- lm(Y ~ X, data = data_5)
+summary(model)
+```
+
+---
+
+## 5. Візуалізація лінії регресії
+
+Створюємо графік лінії регресії з 95% довірчими межами для оцінки надійності моделі.
+
+```{r}
+ggplot(data_5, aes(x = X, y = Y)) +
+  geom_point(aes(color = Y), size = 2, alpha = 0.8) +
+  scale_color_viridis_c() +
+  geom_smooth(method = "lm", color = "red", se = TRUE, linewidth = 1) +
+  labs(title = "Лінія регресії з 95% довірчими межами",
+       subtitle = "Лінія показує прогноз моделі; сірий фон – межі довіри",
+       x = "X", y = "Y") +
+  theme_minimal(base_size = 14)
+```
+
+---
+
+## 6. Перевірка гіпотези про різницю середніх
+
+Створюємо групи High (X > медіана) та Low (X ≤ медіана) і порівнюємо середні значення Y за допомогою t-тесту.
+
+```{r}
+data_5 <- data_5 |> mutate(group = ifelse(X > median(X), "High", "Low"))
+t.test(Y ~ group, data = data_5)
+```
+
+---
+
+## 7. Довірчі інтервали для середніх Y
+
+Будуємо графік довірчих інтервалів для середніх значень Y у групах High і Low, щоб побачити, чи перетинаються інтервали.
+
+```{r}
+ggerrorplot(data_5, x = "group", y = "Y",
+             desc_stat = "mean_sd", add = "mean", error.plot = "errorbar",
+             color = "group", palette = "viridis", size = 0.8) +
+  labs(title = "Довірчі інтервали для середніх Y",
+       subtitle = "High (X > медіана) та Low (X ≤ медіана)",
+       caption = "Якщо інтервали не перетинаються — це ознака відмінності") +
+  theme_minimal(base_size = 14)
+```
+
+---
+
+## 8. Аналіз залишків регресії
+
+### 8.1 Графік залишків
+
+Перевіряємо адекватність моделі за допомогою графіка залишків — він показує, чи немає систематичних відхилень.
+
+```{r}
+residuals <- resid(model)
+fitted <- fitted(model)
+
+ggplot(data.frame(fitted, residuals), aes(x = fitted, y = residuals)) +
+  geom_point(color = "darkorange", size = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  labs(title = "Графік залишків",
+       subtitle = "Перевірка постійності дисперсії (гомоскедастичність)",
+       x = "Прогнозовані значення", y = "Залишки") +
+  theme_minimal(base_size = 14)
+```
+
+### 8.2 Аналіз нормальності залишків
+
+Будуємо Q-Q plot, щоб оцінити, чи залишки мають нормальний розподіл.
+
+```{r}
+qqnorm(residuals)
+qqline(residuals, col = "blue")
+```
+
+---
+
+## 9. Висновки
+
+- Дані демонструють сильний лінійний зв’язок між X та Y.
+- Модель регресії є статистично значущою, що підтверджується високим R².
+- Перевірка гіпотез та графіки підтвердили наявність відмінностей між групами High і Low.
+- Аналіз залишків не виявив систематичних відхилень — модель адекватна.
+
+---
+
